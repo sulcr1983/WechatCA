@@ -4,3 +4,5 @@ __pycache__/
 xiaohu-wechat-format/
 config.json
 .env
+data.db
+config.json.bak
