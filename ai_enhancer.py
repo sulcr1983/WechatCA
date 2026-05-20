@@ -348,10 +348,10 @@ def _generate_cover_dashscope(api_key, prompt):
         "X-DashScope-Async": "enable",
     }
     payload = {
-        "model": "wan2.1-t2i-turbo",
+        "model": "wanx2.1-t2i-turbo",
         "input": {"prompt": prompt},
         "parameters": {
-            "size": "1024x1024",
+            "size": "1024*1024",
             "n": 1,
         },
     }
