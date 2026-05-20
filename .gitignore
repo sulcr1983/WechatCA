@@ -3,3 +3,4 @@ __pycache__/
 .trae/
 xiaohu-wechat-format/
 config.json
+.env

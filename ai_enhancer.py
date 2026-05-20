@@ -271,15 +271,17 @@ def generate_cover(title, subtitle, content, ai_config):
 
     base_url = ai_config.get("url", "").rstrip("/")
     api_key = ai_config.get("api_key", "")
-    model = ai_config.get("model", "")
+    model = ai_config.get("image_model") or ai_config.get("model", "")
     platform_id = ai_config.get("platform_id", "")
 
-    # 构造生图 prompt
+    # 构造生图 prompt：标题为主体，背景贴合内容，2.35:1 横版
     image_prompt = (
-        f"WeChat official account cover image, landscape 2.35:1 ratio. "
-        f"Prominent title text in large bold Chinese characters: {title}. "
-        f"Background style matches the article theme: {subtitle[:50] if subtitle else ''}. "
-        f"Professional magazine cover design, clear readable title, modern eye-catching layout."
+        f"微信公众号封面图，横版比例 2.35:1，高分辨率。"
+        f"画面核心是醒目的中文标题文字：『{title}』。"
+        f"标题必须大号、加粗、居中，占据画面视觉焦点，使用现代无衬线字体，清晰可读。"
+        f"背景设计贴合以下文章内容：{subtitle[:100] if subtitle else title}。{content[:200]}。"
+        f"整体风格：专业杂志封面级品质，色彩高级有质感，构图现代大气，适合手机屏幕浏览。"
+        f"文字绝对不能有扭曲、残缺或乱码。"
     )
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -319,7 +321,7 @@ def generate_cover(title, subtitle, content, ai_config):
                     return {"base64": img_b64, "error": ""}
 
         except requests.exceptions.HTTPError as e:
-            return {"base64": "", "error": f"图片生成失败: {e.response.status_code} - {e.response.text[:200]}"}
+            return {"base64": "", "error": f"图片生成失败: {e.response.status_code}"}
         except requests.exceptions.Timeout:
             return {"base64": "", "error": "图片生成超时（120秒），请重试"}
         except requests.exceptions.ConnectionError:

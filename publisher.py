@@ -360,8 +360,8 @@ def publish_to_account(
         return {"success": False, "media_id": "", "error": str(e)}
 
     # 2. 替换 HTML 中的图片为 CDN URL
-    # 使用当前工作目录作为图片搜索基准
-    image_dir = os.getcwd()
+    # 使用项目目录作为图片搜索基准（而非 cwd）
+    image_dir = str(Path(__file__).parent)
     html_content = replace_html_images(html_content, image_dir, token)
 
     # 3. 上传封面图

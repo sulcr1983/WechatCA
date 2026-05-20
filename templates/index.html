@@ -1183,9 +1183,11 @@ async function generateCoverForPublish() {
       preview.innerHTML = '<img src="data:image/png;base64,' + data.base64 + '" alt="封面">';
       showToast('封面图生成完成', 'success');
     } else {
+      coverBase64 = null;
       showToast(data.error || '生成失败', 'error');
     }
   } catch (err) {
+    coverBase64 = null;
     showToast('封面生成失败: ' + err.message, 'error');
   }
 }
@@ -1549,9 +1551,13 @@ async function confirmPublish() {
       cover_base64: coverBase64 || '',
     };
     const data = await api('/api/publish', { method: 'POST', body });
-    statusEl.className = 'publish-status success';
-    statusEl.textContent = '✓ 推送成功！';
-    showToast('文章已推送到公众号', 'success');
+    if (data.success) {
+      statusEl.className = 'publish-status success';
+      statusEl.textContent = '✓ 推送成功！';
+      showToast('文章已推送到公众号', 'success');
+    } else {
+      throw new Error(data.error || '推送失败');
+    }
   } catch (err) {
     statusEl.className = 'publish-status error';
     statusEl.textContent = '✗ 推送失败: ' + err.message;
