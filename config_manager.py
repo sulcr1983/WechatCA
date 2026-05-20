@@ -31,30 +31,33 @@ def _parse_env() -> dict:
 
 
 def _init_from_env() -> None:
-    """如果账号表为空，从 .env 初始化数据。"""
-    accounts = database.get_accounts()
-    if accounts:
-        return
-
+    """如果数据为空，从 .env 初始化。AI 配置和账号独立检查。"""
     env = _parse_env()
     if not env:
         return
 
-    # AI 配置
-    api_key = env.get("AI_API_KEY", env.get("DASHSCOPE_API_KEY", ""))
-    ai_url = env.get("AI_URL", "")
-    ai_model = env.get("AI_MODEL", "")
-    ai_platform = env.get("AI_PLATFORM_ID", "")
-    ai_image_model = env.get("AI_IMAGE_MODEL", "")
-    database.save_ai_config(
-        url=ai_url or None,
-        api_key=api_key or None,
-        model=ai_model or None,
-        platform_id=ai_platform or None,
-        image_model=ai_image_model or None,
-    )
+    # AI 配置：如果为空则从 .env 填充
+    ai_config = database.get_ai_config()
+    if not ai_config.get("api_key") and not ai_config.get("model"):
+        api_key = env.get("AI_API_KEY", env.get("DASHSCOPE_API_KEY", ""))
+        ai_url = env.get("AI_URL", "")
+        ai_model = env.get("AI_MODEL", "")
+        ai_platform = env.get("AI_PLATFORM_ID", "")
+        ai_image_model = env.get("AI_IMAGE_MODEL", "")
+        if api_key or ai_url:
+            database.save_ai_config(
+                url=ai_url or None,
+                api_key=api_key or None,
+                model=ai_model or None,
+                platform_id=ai_platform or None,
+                image_model=ai_image_model or None,
+            )
 
-    # 公众号账号
+    # 公众号账号：如果为空则从 .env 填充
+    accounts = database.get_accounts()
+    if accounts:
+        return
+
     index = 1
     while True:
         name = env.get(f"WECHAT_ACCOUNT_{index}_NAME", "")

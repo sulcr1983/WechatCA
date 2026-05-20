@@ -33,6 +33,19 @@ function showToast(msg, type = 'info') {
   }, 3000);
 }
 
+/* ===== Plain Text Detection ===== */
+function isPlainText(content) {
+  // Count Markdown structure markers
+  let count = 0;
+  count += (content.match(/^#+\s/gm) || []).length;     // headings
+  count += (content.match(/\*\*/g) || []).length / 2;    // bold
+  count += (content.match(/^-\s/gm) || []).length;        // unordered lists
+  count += (content.match(/^>\s/gm) || []).length;        // blockquotes
+  count += (content.match(/`/g) || []).length / 2;         // inline code
+  count += (content.match(/^---+$/gm) || []).length;       // horizontal rules
+  return count < 2;
+}
+
 /* ===== Format Content (debounced) ===== */
 function formatContent() {
   clearTimeout(formatTimer);
@@ -46,7 +59,12 @@ function formatContent() {
     }
     try {
       const data = await api('/api/format', { method: 'POST', body: { content, theme } });
-      document.getElementById('preview').innerHTML = data.html || '';
+      let html = data.html || '';
+      // 检测纯文本，在预览顶部插入 AI 增强提示
+      if (isPlainText(content)) {
+        html = '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px;color:#92400e;text-align:center;cursor:pointer" onclick="aiEnhance()">💡 检测到纯文本，点击 <b>AI 增强</b> 自动添加标题、加粗、列表等排版结构</div>' + html;
+      }
+      document.getElementById('preview').innerHTML = html;
       document.getElementById('word-count').textContent = data.word_count || 0;
     } catch (err) {
       document.getElementById('preview').innerHTML = '<p style="color:#ef4444;">排版失败: ' + err.message + '</p>';
