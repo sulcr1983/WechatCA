@@ -858,10 +858,6 @@ body::before {
           <option value="">选择主题</option>
         </select>
       </div>
-      <div class="editor-toolbar-right">
-        <button class="glass-btn" onclick="generateCover()">🖼 生成封面</button>
-        <button class="glass-btn" onclick="generateSummary()">📝 AI 摘要</button>
-      </div>
     </div>
 
     <div class="editor-split">
@@ -1180,7 +1176,7 @@ async function generateCoverForPublish() {
   try {
     const formatData = await api('/api/format', { method: 'POST', body: { content, theme: currentTheme } });
     const title = formatData.title || '未命名';
-    const data = await api('/api/generate-cover', { method: 'POST', body: { title, subtitle: '' } });
+    const data = await api('/api/generate-cover', { method: 'POST', body: { title, subtitle: '', content } });
     if (data.base64) {
       coverBase64 = data.base64;
       const preview = document.getElementById('cover-preview');

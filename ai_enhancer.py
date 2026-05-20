@@ -207,10 +207,12 @@ def test_ai_connection(ai_config):
 
 
 def generate_summary(content, ai_config):
-    """AI 生成 120 字以内的文章摘要，用于公众号草稿箱的 digest 字段。
+    """AI 生成 100 字左右的公众号摘要。
+
+    让 AI 像编辑写推荐语一样自由发挥，避免套话。
 
     Args:
-        content (str): 文章内容（Markdown 或纯文本）
+        content (str): 文章内容
         ai_config (dict): AI 配置
 
     Returns:
@@ -219,36 +221,289 @@ def generate_summary(content, ai_config):
     if not ai_config or not ai_config.get("api_key"):
         return {"summary": "", "error": "未配置 AI 服务，请在设置中填写 API Key"}
 
-    prompt = f"""请为以下文章生成一段120字以内的摘要，要求：
-1. 准确概括文章核心内容
-2. 语言简洁有力，吸引读者点击
-3. 不要使用引号包裹摘要
-4. 只输出摘要文本，不要添加任何解释
+    prompt = f"""你是公众号的资深编辑。看完下面这篇文章后，写一段能吸引读者点击的摘要。
 
----
+要求：
+- 字数 80-100 字左右，2-4 句话
+- 像跟朋友推荐一样自然，不要端着
+- 可以抛出文章中最戳人的一个细节、一个悬念、或一句有共鸣的感受
+- 禁止使用"本文介绍了""总而言之""通过分析""通过""让我们""综上所述"等套话
 
+只写摘要本身，不要加任何解释或标题。
+
+文章内容：
 {content[:3000]}"""
 
     result = call_ai_api(prompt, ai_config)
     if result["error"]:
         return {"summary": "", "error": result["error"]}
 
-    summary = result["content"].strip().strip('"').strip("'")[:120]
+    summary = result["content"].strip().strip('"').strip("'").strip('\u201c').strip('\u201d')[:120]
     return {"summary": summary, "error": ""}
 
 
-def generate_cover_svg(title, subtitle=""):
-    """根据文章标题生成 SVG 格式的公众号封面图（2.35:1 比例）。
+def _escape_xml(text):
+    """转义 XML 特殊字符，防止 SVG 解析失败。"""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    生成一个渐变背景 + 标题文字的 SVG 封面，无需图片 API。
+
+def generate_cover(title, subtitle, content, ai_config):
+    """通过 AI 生成公众号封面图（PNG 格式）。
+
+    流程：
+    1. 用文本 AI 根据文章内容生成封面背景的描述 prompt
+    2. 调用 AI 图片生成 API 生成背景图
+    3. 用 Pillow 在背景图上叠加中文标题
 
     Args:
         title (str): 文章标题
-        subtitle (str): 副标题或摘要，可选
+        subtitle (str): 副标题或摘要
+        content (str): 文章全文
+        ai_config (dict): AI 配置
 
     Returns:
-        dict: {"svg": str, "base64": str, "error": str}
+        dict: {"base64": str, "error": str}
+            base64 为 PNG 的纯 base64 字符串
     """
+    if not ai_config or not ai_config.get("api_key"):
+        return _generate_cover_png_fallback(title, subtitle)
+
+    base_url = ai_config.get("url", "").rstrip("/")
+    api_key = ai_config.get("api_key", "")
+    model = ai_config.get("model", "")
+
+    # Step 1: 用文本 AI 生成封面背景的 prompt
+    prompt_result = call_ai_api(
+        f"""You are a professional graphic designer. Based on the following article, describe a background image for a WeChat public account cover (landscape, 2.35:1 aspect ratio).
+
+Requirements:
+- Return ONLY an English prompt for AI image generation, no explanation
+- The image should be a clean, professional background with negative space for text overlay
+- Include color scheme, visual style, and mood suggestions
+- NO text or characters in the image
+- Suitable for a WeChat article cover about: {title}
+
+Article content:
+{content[:1500]}
+
+Return only the image generation prompt.""",
+        ai_config
+    )
+
+    if prompt_result["error"]:
+        return _generate_cover_png_fallback(title, subtitle)
+
+    image_prompt = prompt_result["content"].strip()
+
+    # Step 2: 调用图片生成 API
+    headers = {"Authorization": f"Bearer {api_key}"}
+    img_payload = {
+        "model": model,
+        "prompt": image_prompt,
+        "size": "1792x1024",
+        "n": 1,
+    }
+
+    image_endpoints = [
+        "/images/generations",
+        "/v1/images/generations",
+    ]
+
+    bg_image = None
+    for endpoint in image_endpoints:
+        url = f"{base_url}{endpoint}"
+        try:
+            response = requests.post(url, json=img_payload, headers=headers, timeout=120)
+            response.raise_for_status()
+            data = response.json()
+
+            if "data" in data and len(data["data"]) > 0:
+                img_data = data["data"][0]
+                if "b64_json" in img_data:
+                    bg_image = base64.b64decode(img_data["b64_json"])
+                    break
+                elif "url" in img_data:
+                    img_resp = requests.get(img_data["url"], timeout=30)
+                    img_resp.raise_for_status()
+                    bg_image = img_resp.content
+                    break
+        except Exception:
+            continue
+
+    if bg_image is None:
+        return _generate_cover_png_fallback(title, subtitle)
+
+    # Step 3: 用 Pillow 在 AI 生成的背景上叠加中文标题
+    return _overlay_title_on_image(bg_image, title, subtitle)
+
+
+def _overlay_title_on_image(image_data, title, subtitle=""):
+    """在图片上叠加中文标题文字。"""
+    from PIL import Image, ImageDraw, ImageFont
+    import io
+
+    bg = Image.open(io.BytesIO(image_data)).convert("RGB")
+    # 缩放到封面比例
+    target_width, target_height = 900, 383
+    bg = bg.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+    draw = ImageDraw.Draw(bg)
+
+    # 加一层半透明遮罩让文字更清晰
+    overlay = Image.new("RGBA", (target_width, target_height), (0, 0, 0, 60))
+    bg = bg.convert("RGBA")
+    bg = Image.alpha_composite(bg, overlay).convert("RGB")
+    draw = ImageDraw.Draw(bg)
+
+    display_title = title[:30] + "..." if len(title) > 30 else title
+    title_len = len(display_title)
+    if title_len <= 8:
+        title_size = 48
+    elif title_len <= 14:
+        title_size = 38
+    else:
+        title_size = 30
+
+    # 加载字体
+    font_paths = [
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
+    ]
+    title_font = None
+    subtitle_font = None
+    brand_font = None
+
+    for fp in font_paths:
+        try:
+            title_font = ImageFont.truetype(fp, title_size)
+            subtitle_font = ImageFont.truetype(fp, 16)
+            brand_font = ImageFont.truetype(fp, 13)
+            break
+        except (IOError, OSError):
+            continue
+
+    if title_font is None:
+        title_font = ImageFont.load_default()
+        subtitle_font = ImageFont.load_default()
+        brand_font = ImageFont.load_default()
+
+    # 绘制标题（白色，居中）
+    draw.text((target_width // 2, 160), display_title, fill=(255, 255, 255), font=title_font, anchor="mm")
+
+    if subtitle:
+        display_subtitle = subtitle[:50] + "..." if len(subtitle) > 50 else subtitle
+        draw.text((target_width // 2, 210), display_subtitle, fill=(230, 230, 230), font=subtitle_font, anchor="mm")
+
+    draw.text((target_width // 2, target_height - 20), "SuperSu AI 排版", fill=(200, 200, 200), font=brand_font, anchor="mm")
+
+    buffer = io.BytesIO()
+    bg.save(buffer, format="PNG", quality=95)
+    png_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return {"base64": png_b64, "error": ""}
+
+
+def _generate_cover_png_fallback(title, subtitle=""):
+    """降级方案：使用 Pillow 生成简单渐变封面。"""
+    from PIL import Image, ImageDraw, ImageFont
+
+    width, height = 900, 383
+    gradients = [
+        ((102, 126, 234), (118, 75, 162)),   # 蓝紫
+        ((240, 147, 251), (245, 87, 108)),    # 粉红
+        ((79, 172, 254), (0, 242, 254)),      # 天蓝
+        ((67, 233, 123), (56, 249, 215)),     # 绿松
+        ((250, 112, 154), (254, 225, 64)),    # 橙粉
+        ((161, 140, 209), (251, 194, 235)),   # 淡紫
+        ((252, 203, 144), (213, 126, 235)),   # 暖橙紫
+        ((224, 195, 252), (142, 197, 252)),   # 薰衣草蓝
+        ((245, 87, 108), (255, 106, 0)),      # 红橙
+        ((12, 52, 131), (162, 182, 223)),     # 深蓝浅蓝
+    ]
+
+    color1, color2 = random.choice(gradients)
+
+    # 创建渐变背景
+    img = Image.new("RGB", (width, height))
+    draw = ImageDraw.Draw(img)
+    for y in range(height):
+        ratio = y / height
+        r = int(color1[0] + (color2[0] - color1[0]) * ratio)
+        g = int(color1[1] + (color2[1] - color1[1]) * ratio)
+        b = int(color1[2] + (color2[2] - color1[2]) * ratio)
+        draw.line([(0, y), (width, y)], fill=(r, g, b))
+
+    # 尝试加载字体
+    font_paths = [
+        "C:/Windows/Fonts/msyh.ttc",       # 微软雅黑
+        "C:/Windows/Fonts/simhei.ttf",     # 黑体
+        "C:/Windows/Fonts/simsun.ttc",     # 宋体
+        "/System/Library/Fonts/PingFang.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    ]
+    
+    display_title = title[:30] + "..." if len(title) > 30 else title
+    display_subtitle = subtitle[:50] + "..." if len(subtitle) > 50 else subtitle
+
+    # 根据标题长度计算字号
+    title_len = len(display_title)
+    if title_len <= 8:
+        title_size = 52
+    elif title_len <= 14:
+        title_size = 40
+    else:
+        title_size = 32
+
+    # 加载字体
+    title_font = None
+    subtitle_font = None
+    brand_font = None
+    
+    for font_path in font_paths:
+        try:
+            title_font = ImageFont.truetype(font_path, title_size)
+            subtitle_font = ImageFont.truetype(font_path, 18)
+            brand_font = ImageFont.truetype(font_path, 14)
+            break
+        except (IOError, OSError):
+            continue
+    
+    if title_font is None:
+        title_font = ImageFont.load_default()
+        subtitle_font = ImageFont.load_default()
+        brand_font = ImageFont.load_default()
+
+    # 计算文字位置（居中）
+    if display_subtitle:
+        y_title = 140
+        y_subtitle = 200
+    else:
+        y_title = 170
+        y_subtitle = None
+
+    # 绘制标题（白色，加粗效果通过字体选择实现）
+    draw.text((width // 2, y_title), display_title, fill=(255, 255, 255), font=title_font, anchor="mm")
+
+    # 绘制副标题
+    if y_subtitle and display_subtitle:
+        # 半透明白色（Pillow 不支持 alpha，用浅灰代替）
+        draw.text((width // 2, y_subtitle), display_subtitle, fill=(220, 220, 220), font=subtitle_font, anchor="mm")
+
+    # 绘制底部品牌
+    draw.text((width // 2, height - 25), "SuperSu AI 排版", fill=(200, 200, 200), font=brand_font, anchor="mm")
+
+    # 转为 base64
+    import io
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG", quality=95)
+    png_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+    # SVG 字段返回空字符串（不再需要）
+    return {"svg": "", "base64": png_b64, "error": ""}
+
+
+def _generate_cover_svg_fallback(title, subtitle=""):
+    """Pillow 不可用时降级为 SVG 封面。"""
     # 预设渐变色方案
     gradients = [
         ("#667eea", "#764ba2"),  # 蓝紫
@@ -268,6 +523,10 @@ def generate_cover_svg(title, subtitle=""):
     # 截断标题（SVG 中中文宽度估算）
     display_title = title[:20] + "..." if len(title) > 20 else title
     display_subtitle = subtitle[:30] + "..." if len(subtitle) > 30 else subtitle
+
+    # 转义 XML 特殊字符
+    display_title = _escape_xml(display_title)
+    display_subtitle = _escape_xml(display_subtitle)
 
     # 计算标题字号
     title_len = len(display_title)
@@ -305,11 +564,10 @@ def generate_cover_svg(title, subtitle=""):
         f'{subtitle_part}'
         f'<text x="450" y="360" text-anchor="middle" '
         f'font-family="PingFang SC,Microsoft YaHei,sans-serif" '
-        f'font-size="14" fill="rgba(255,255,255,0.5)">SuperSu · AI 排版</text>'
+        f'font-size="14" fill="rgba(255,255,255,0.5)">SuperSu AI 排版</text>'
         f'</svg>'
     )
 
     svg_b64 = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
-    data_uri = f"data:image/svg+xml;base64,{svg_b64}"
 
-    return {"svg": svg, "base64": data_uri, "error": ""}
+    return {"svg": svg, "base64": svg_b64, "error": ""}

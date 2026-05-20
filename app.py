@@ -221,11 +221,13 @@ def api_generate_summary():
 
 @app.route("/api/generate-cover", methods=["POST"])
 def api_generate_cover():
-    """生成公众号封面图，参数: {title, subtitle}"""
+    """AI 生成公众号封面图，参数: {title, subtitle, content}"""
     data = request.get_json(force=True)
     title = data.get("title", "未命名文章")
     subtitle = data.get("subtitle", "")
-    result = ai_enhancer.generate_cover_svg(title, subtitle)
+    content = data.get("content", "")
+    ai_config = config_manager.get_ai_config()
+    result = ai_enhancer.generate_cover(title, subtitle, content, ai_config)
     return jsonify(result)
 
 
