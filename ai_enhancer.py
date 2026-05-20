@@ -254,8 +254,8 @@ def generate_cover(title, subtitle, content, ai_config):
     背景根据文章内容风格生成。系统只负责拿到返回的图片推送到公众号。
 
     支持自动切换文生图模型：
-    - 通义千问平台自动使用 wan2.1-t2i-turbo 模型
-    - 其他平台使用当前配置的模型
+    - 通义千问平台使用 DashScope 原生 API 调用 wan2.1-t2i-turbo
+    - 其他平台使用 OpenAI 兼容接口
 
     Args:
         title (str): 文章标题
@@ -274,14 +274,7 @@ def generate_cover(title, subtitle, content, ai_config):
     model = ai_config.get("model", "")
     platform_id = ai_config.get("platform_id", "")
 
-    # 通义千问平台自动切换为文生图模型
-    if platform_id in ("qwen", "baiLian") and model:
-        # 如果当前模型不是图片生成模型，自动使用 wan2.1-t2i-turbo
-        image_model = "wan2.1-t2i-turbo"
-    else:
-        image_model = model
-
-    # 构造生图 prompt - 使用简洁的英文指令，让 AI 生成带标题文字的封面
+    # 构造生图 prompt
     image_prompt = (
         f"WeChat official account cover image, landscape 2.35:1 ratio. "
         f"Prominent title text in large bold Chinese characters: {title}. "
@@ -289,9 +282,15 @@ def generate_cover(title, subtitle, content, ai_config):
         f"Professional magazine cover design, clear readable title, modern eye-catching layout."
     )
 
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    # 通义千问平台使用 DashScope 原生 API
+    if platform_id in ("qwen", "baiLian"):
+        return _generate_cover_dashscope(api_key, image_prompt)
+
+    # 其他平台使用 OpenAI 兼容接口
     img_payload = {
-        "model": image_model,
+        "model": model,
         "prompt": image_prompt,
         "size": "1792x1024",
         "n": 1,
@@ -311,10 +310,8 @@ def generate_cover(title, subtitle, content, ai_config):
 
             if "data" in data and len(data["data"]) > 0:
                 img_data = data["data"][0]
-                # b64_json 格式
                 if "b64_json" in img_data:
                     return {"base64": img_data["b64_json"], "error": ""}
-                # url 格式，下载
                 if "url" in img_data:
                     img_resp = requests.get(img_data["url"], timeout=30)
                     img_resp.raise_for_status()
@@ -331,5 +328,78 @@ def generate_cover(title, subtitle, content, ai_config):
             return {"base64": "", "error": f"图片生成异常: {str(e)}"}
 
     return {"base64": "", "error": "图片生成不可用，当前 AI 模型不支持图片生成功能"}
+
+
+def _generate_cover_dashscope(api_key, prompt):
+    """通过 DashScope 原生 API 生成封面图（通义万相文生图）。
+
+    Args:
+        api_key (str): DashScope API Key
+        prompt (str): 生图提示词
+
+    Returns:
+        dict: {"base64": str, "error": str}
+    """
+    # DashScope 文生图异步接口
+    url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-DashScope-Async": "enable",
+    }
+    payload = {
+        "model": "wan2.1-t2i-turbo",
+        "input": {"prompt": prompt},
+        "parameters": {
+            "size": "1024x1024",
+            "n": 1,
+        },
+    }
+
+    try:
+        # 1. 提交异步任务
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+
+        if "output" not in data or "task_id" not in data["output"]:
+            return {"base64": "", "error": f"任务提交失败: {data.get('message', '未知错误')}"}
+
+        task_id = data["output"]["task_id"]
+
+        # 2. 轮询任务状态
+        task_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/{task_id}"
+        task_headers = {"Authorization": f"Bearer {api_key}"}
+
+        for _ in range(60):  # 最多轮询 60 次
+            import time
+            time.sleep(2)
+            task_resp = requests.get(task_url, headers=task_headers, timeout=15)
+            task_resp.raise_for_status()
+            task_data = task_resp.json()
+
+            task_status = task_data.get("output", {}).get("task_status", "")
+            if task_status == "SUCCEEDED":
+                # 获取图片 URL
+                results = task_data.get("output", {}).get("results", [])
+                if results and "url" in results[0]:
+                    img_resp = requests.get(results[0]["url"], timeout=30)
+                    img_resp.raise_for_status()
+                    img_b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                    return {"base64": img_b64, "error": ""}
+                return {"base64": "", "error": "未获取到图片 URL"}
+            elif task_status == "FAILED":
+                error_msg = task_data.get("output", {}).get("message", "任务失败")
+                return {"base64": "", "error": f"图片生成失败: {error_msg}"}
+            # PENDING / RUNNING 继续轮询
+
+        return {"base64": "", "error": "图片生成超时（120秒），请重试"}
+
+    except requests.exceptions.Timeout:
+        return {"base64": "", "error": "图片生成超时，请重试"}
+    except requests.exceptions.ConnectionError:
+        return {"base64": "", "error": "无法连接到 DashScope 服务"}
+    except Exception as e:
+        return {"base64": "", "error": f"图片生成异常: {str(e)}"}
 
 
