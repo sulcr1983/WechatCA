@@ -9,6 +9,7 @@ import config_manager
 import formatter
 import publisher
 import ai_enhancer
+import tasks
 
 app = Flask(__name__)
 
@@ -277,6 +278,63 @@ def api_copy_html():
         return jsonify({"html": result.get("html", "")})
     except Exception as e:
         return jsonify({"html": "", "error": str(e)})
+
+
+# ── 异步任务 API（后台执行长耗时操作）────────────────────────────────
+
+@app.route("/api/async/generate-cover", methods=["POST"])
+def api_async_generate_cover():
+    """异步生成封面图，立即返回 task_id，前端轮询 /api/task/<task_id>"""
+    data = request.get_json(force=True)
+    title = data.get("title", "未命名文章")
+    subtitle = data.get("subtitle", "")
+    content = data.get("content", "")
+    ai_config = config_manager.get_ai_config()
+
+    task_id = tasks.submit(ai_enhancer.generate_cover, title, subtitle, content, ai_config)
+    return jsonify({"task_id": task_id})
+
+
+@app.route("/api/async/publish", methods=["POST"])
+def api_async_publish():
+    """异步推送到公众号，立即返回 task_id"""
+    data = request.get_json(force=True)
+    account_id = data.get("account_id", "")
+    html_content = data.get("html", "")
+    title = data.get("title", "")
+    cover_path = data.get("cover_path", "")
+    author = data.get("author", "")
+    digest = data.get("digest", "")
+    cover_base64 = data.get("cover_base64", "")
+
+    if not account_id:
+        return jsonify({"task_id": "", "error": "未选择公众号"})
+
+    account = config_manager.get_account(account_id)
+    if not account:
+        return jsonify({"task_id": "", "error": "公众号不存在"})
+
+    task_id = tasks.submit(
+        publisher.publish_to_account,
+        account, html_content, title,
+        cover_path=cover_path or None,
+        author=author, digest=digest,
+        cover_base64=cover_base64,
+    )
+    return jsonify({"task_id": task_id})
+
+
+@app.route("/api/task/<task_id>")
+def api_task_status(task_id):
+    """轮询任务状态，返回 {status, result, error}"""
+    t = tasks.get(task_id)
+    if t is None:
+        return jsonify({"status": "not_found", "result": None, "error": "任务不存在或已过期"})
+    return jsonify({
+        "status": t["status"],
+        "result": t["result"],
+        "error": t["error"],
+    })
 
 
 # ── 启动逻辑 ─────────────────────────────────────────────────────────

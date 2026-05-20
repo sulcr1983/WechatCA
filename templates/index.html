@@ -1170,22 +1170,41 @@ async function generateCover() {
   }
 }
 
+/* ===== Async Task Polling ===== */
+async function pollTask(taskId, { onPending, onDone, onFailed, intervalMs = 2000, timeoutMs = 180000 }) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    await new Promise(r => setTimeout(r, intervalMs));
+    const t = await api('/api/task/' + taskId);
+    if (t.status === 'done') { onDone(t.result); return; }
+    if (t.status === 'failed') { onFailed(t.error || '任务失败'); return; }
+    if (onPending) onPending();
+  }
+  onFailed('任务超时（超过 ' + (timeoutMs / 1000) + ' 秒）');
+}
+
 async function generateCoverForPublish() {
   const content = document.getElementById('editor').value;
   if (!content.trim()) { showToast('请先输入内容', 'error'); return; }
+  const preview = document.getElementById('cover-preview');
   try {
     const formatData = await api('/api/format', { method: 'POST', body: { content, theme: currentTheme } });
     const title = formatData.title || '未命名';
-    const data = await api('/api/generate-cover', { method: 'POST', body: { title, subtitle: '', content } });
-    if (data.base64) {
-      coverBase64 = data.base64;
-      const preview = document.getElementById('cover-preview');
-      preview.innerHTML = '<img src="data:image/png;base64,' + data.base64 + '" alt="封面">';
-      showToast('封面图生成完成', 'success');
-    } else {
-      coverBase64 = null;
-      showToast(data.error || '生成失败', 'error');
-    }
+    preview.innerHTML = '<span class="placeholder-text">封面生成中...</span>';
+    const { task_id } = await api('/api/async/generate-cover', { method: 'POST', body: { title, subtitle: '', content } });
+    await pollTask(task_id, {
+      onDone: (result) => {
+        if (result && result.base64) {
+          coverBase64 = result.base64;
+          preview.innerHTML = '<img src="data:image/png;base64,' + result.base64 + '" alt="封面">';
+          showToast('封面图生成完成', 'success');
+        } else {
+          coverBase64 = null;
+          showToast(result.error || '生成失败', 'error');
+        }
+      },
+      onFailed: (err) => { coverBase64 = null; showToast('封面生成失败: ' + err, 'error'); }
+    });
   } catch (err) {
     coverBase64 = null;
     showToast('封面生成失败: ' + err.message, 'error');
@@ -1538,26 +1557,35 @@ async function confirmPublish() {
 
   statusEl.className = 'publish-status loading';
   statusEl.style.display = 'block';
-  statusEl.innerHTML = '<span class="spinner"></span> 推送中...';
+  statusEl.innerHTML = '<span class="spinner"></span> 排版中...';
 
   try {
     const formatData = await api('/api/format', { method: 'POST', body: { content, theme } });
-    const body = {
+    statusEl.innerHTML = '<span class="spinner"></span> 推送中...';
+    const { task_id } = await api('/api/async/publish', { method: 'POST', body: {
       account_id: selectedPublishAccountId,
       html: formatData.html,
       title: formatData.title || '未命名',
       author,
       digest,
       cover_base64: coverBase64 || '',
-    };
-    const data = await api('/api/publish', { method: 'POST', body });
-    if (data.success) {
-      statusEl.className = 'publish-status success';
-      statusEl.textContent = '✓ 推送成功！';
-      showToast('文章已推送到公众号', 'success');
-    } else {
-      throw new Error(data.error || '推送失败');
-    }
+    }});
+    await pollTask(task_id, {
+      onDone: (result) => {
+        if (result && result.success) {
+          statusEl.className = 'publish-status success';
+          statusEl.textContent = '✓ 推送成功！';
+          showToast('文章已推送到公众号', 'success');
+        } else {
+          throw new Error((result && result.error) || '推送失败');
+        }
+      },
+      onFailed: (err) => {
+        statusEl.className = 'publish-status error';
+        statusEl.textContent = '✗ 推送失败: ' + err;
+        showToast('推送失败: ' + err, 'error');
+      }
+    });
   } catch (err) {
     statusEl.className = 'publish-status error';
     statusEl.textContent = '✗ 推送失败: ' + err.message;
