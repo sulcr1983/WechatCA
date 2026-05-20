@@ -1576,6 +1576,8 @@ document.getElementById('editor').addEventListener('input', formatContent);
 /* ===== Init ===== */
 (async function init() {
   await loadThemes();
+  await loadAccounts();
+  await loadAiConfig();
   if (themes.length > 0 && !currentTheme) {
     currentTheme = themes[0].id;
     document.getElementById('theme-select').value = currentTheme;
