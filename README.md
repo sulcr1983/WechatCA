@@ -1,83 +1,256 @@
-# WechatCA — 公众号文章 AI 排版推送助手
+# 🎨 SuperSu - 公众号文章 AI 排版推送助手
 
-一键将 Markdown 文本自动排版、AI 增强、生成封面图，推送到微信公众号草稿箱。
+> ✍️ **粘贴任意文本，AI 自动排版，一键推送草稿箱。**
+> 🚫 不登录第三方平台 · 🔐 不上传密钥 · 🧩 不装插件 - **打开浏览器就用**
 
-## 功能
+---
 
-- **Markdown 排版**：33 个主题可选，实时预览
-- **AI 增强**：自动添加标题层级、关键词加粗、段落优化
-- **封面生成**：gpt-image-2 / 通义万相 文生图，标题大字居中
-- **AI 摘要**：80-100 字自然推荐语，无套话
-- **多账号管理**：支持多个公众号切换
-- **一键推送**：直接推送到微信草稿箱
+## 😩 你是不是也在经历这些？
 
-## 快速开始
+| 😤 痛点 | 💭 你的内心独白 |
+|:-------:|----------------|
+| 💸 | *写完文章还要开**第三方排版平台**，登录、粘贴、调样式，会员好几百？* |
+| 💻 | *用个 Skill 还要**打开终端敲命令**？我只是想发篇文章啊！* |
+| 🔓 | *网页版工具要我填 AppID 和 Secret... **把钥匙交给陌生人**放心吗？* |
+| 🔄 | *多个公众号来回切换，**登录 → 退出 → 登录**，我疯了！* |
+| 🎨 | *封面图到处找、摘要随便糊弄... **发布前的最后一步永远是最烦的*** |
+
+<p align="center"><strong>💡 如果有工具，能在本地浏览器里一次搞定所有这些事呢？</strong></p>
+
+---
+
+## ✨ 这就是 SuperSu 做的事情
+
+一个**完全本地运行**的公众号排版工具 - 打开浏览器，粘贴文章，**一切交给 AI**：
+
+```
+📝 粘贴任意文本（纯文本 / Markdown 都行）
+🎨 选主题风格（33 个可选）
+🤖 AI 润色 + 排版（实时预览）
+🖼️ AI 生成摘要 + 封面图
+📌 选择目标公众号
+🚀 一键推送草稿箱
+```
+
+🔒 **全程在浏览器里完成。密钥不出本机，不依赖任何第三方排版平台。**
+
+---
+
+## 🥊 和市面上同类工具对比
+
+| 能力 | 🟢 SuperSu | 在线排版平台 | 命令行工具 | 浏览器插件 |
+|------|:----------:|:-----------:|:---------:|:----------:|
+| 🔑 是否需要注册账号 | ❌ 不需要 | ✅ 需要 | ❌ 不需要 | ✅ 需要 |
+| 💰 是否需要付费会员 | ❌ **完全免费** | ✅ 300-600元/年 | ❌ 免费 | ✅ 有免费版/付费版 |
+| 💻 是否需要打开终端 | ❌ 不需要 | ❌ 不需要 | ⚠️ 需要敲命令 | ❌ 不需要 |
+| 🔐 密钥是否留在本机 | ✅ **是** | N/A | N/A | ❌ 插件持有权限 |
+| 🔀 多账号一键切换 | ✅ 支持 | ❌ 不支持 | ❌ 需要改配置 | ✅ 支持 |
+| 🤖 AI 自动排版 | ✅ **有** | ❌ 手动排版 | ✅ 有 | ❌ 无 |
+| 🖼️ AI 生成封面图 | ✅ **有** | ❌ 自己找图 | ❌ 无 | ❌ 无 |
+| 📝 AI 生成摘要 | ✅ **有** | ❌ 自己写 | ❌ 无 | ❌ 无 |
+| 🔧 微信兼容性处理 | ✅ **全自动** | ⚠️ 部分兼容 | ✅ 有 | ⚠️ 插件实现 |
+| 🎨 33 个排版主题 | ✅ **有** | ⚠️ 模板有限 | ❌ 单一风格 | ❌ 无 |
+
+> 💬 **一句话：把开源排版引擎的 AI 能力 + AI 生图 + 多账号管理，全部装进一个本地 Web 界面里。**
+
+---
+
+## 🎯 核心功能
+
+### 🎨 33 个排版主题，实时预览
+
+> 包豪斯 · 墨韵 · 杂志 · 微信原生 · 深夜模式 · 少数派风格...
+
+选一个风格，**写完即排版**。实时预览窗口直接模拟微信文章效果，所见即所得。
+
+### ✨ AI 智能增强，不改你写的任何字
+
+纯文本粘贴进去，AI 自动帮你加上结构：
+
+- 🔍 自动识别并添加 `#` 主标题、`##` 章节标题
+- 💪 自动识别关键词并加 `**粗体**`
+- 📋 自动拆分长段落、添加列表标记
+- 🧹 自动清理格式、统一标点符号
+
+**措辞一个字都不改** - 你写什么就是什么，AI 只帮你加结构。 ✅
+
+### 🖼️ AI 生成封面图，2.35:1 公众号标准比例
+
+根据文章内容自动生图，标题大字醒目，背景根据文章主题风格自动生成。不满意？点一下重新生成。
+
+> 🎭 支持任意 AI 生图模型，根据你的 API 配置自动适配。
+
+### 📝 AI 自动生成摘要，告别套话
+
+80-100 字自然推荐语，像朋友推荐一样自然：
+
+| ❌ 旧方式 | ✅ SuperSu |
+|----------|-----------|
+| 本文介绍了如何高效学习编程的三个步骤... | 掌握编程没那么难。从语法到项目再到持续学习，这篇文章用最朴实的语言讲透了每个阶段最该做的事。适合每一个准备开始的新手。 |
+
+### 🚀 一键推送草稿箱，草稿在那等你
+
+> 排版完成 → 上传封面 → 推送 → **搞定** ✅
+>
+> 打开微信后台，草稿已经在那等你了。不用复制粘贴，不用切窗口。
+
+### 🔑 多账号管理，一键切换
+
+> 把所有公众号的 Key 配置在本地 SQLite，随时切换，**密钥不出本机**。
+
+### ⏱️ 异步任务，不阻塞编辑器
+
+> 封面生成和推送都是后台异步执行，你继续写文章，AI 在后台干活。
+
+---
+
+## 🌐 支持的 AI 平台（18 个）
+
+| 🏢 平台 | 💬 文本模型 | 🎨 生图模型 |
+|--------|------------|-----------|
+| 🔗 TokenPool 中转站 | gpt-4o · gpt-4o-mini · deepseek-chat | gpt-image-2 ✨ |
+| 🔵 OpenAI | gpt-4o · gpt-4o-mini | dall-e-3 ✨ |
+| 🟠 阿里云百炼 | qwen-plus · qwen-max | wanx2.1-t2i-turbo ✨ |
+| 🟣 Claude (Anthropic) | claude-sonnet-4 | - |
+| 🔴 Google Gemini | gemini-2.5-flash | - |
+| 🟢 DeepSeek | deepseek-chat | - |
+| 🔵 智谱 AI | glm-4-plus | - |
+| 🟡 豆包 (字节跳动) | doubao-pro | - |
+| 🟠 通义千问 | qwen-turbo | wanx2.1 |
+| 🔵 腾讯混元 | hunyuan-pro | - |
+| 🔹 其他 8 个平台 | 硅基流动 · 讯飞星火 · 零一万物 · MiniMax 等 | - |
+
+> 💰 **同一个中转站 key 可以同时用文本和生图，不需要分别购买。**
+
+---
+
+## 🚀 快速开始
+
+> ⏱️ **5 分钟，从 0 到能用。**
 
 ```bash
-# 1. 克隆
+# 1️⃣ 克隆项目
 git clone https://github.com/sulcr1983/WechatCA.git
 cd WechatCA
 
-# 2. 安装依赖
+# 2️⃣ 安装依赖
 pip install -r requirements.txt
 
-# 3. 克隆排版引擎
+# 3️⃣ 克隆排版引擎（基于小互 AI 的 xiaohu-wechat-format）
 git clone https://github.com/xiaohuailabs/xiaohu-wechat-format.git
 
-# 4. 配置 .env（复制 .env.example 修改）
+# 4️⃣ 配置 .env
 cp .env.example .env
-# 编辑 .env 填入 API Key 和公众号 AppID/AppSecret
+# 编辑 .env，填入 API Key 和公众号 AppID/AppSecret
 
-# 5. 启动
+# 5️⃣ 启动！🎉
 python app.py
 ```
 
-浏览器自动打开 `http://127.0.0.1:5000`。
+🌐 浏览器自动打开 `http://127.0.0.1:5000`，开始使用！
 
-## .env 配置说明
+### 📋 .env 配置示例
 
 ```env
-AI_API_KEY=sk-your-key          # AI API Key
-AI_URL=https://api.tokenpool.co/v1  # API 地址
-AI_MODEL=gpt-4o-mini            # 文本模型
-AI_IMAGE_MODEL=gpt-image-2      # 生图模型
-AI_PLATFORM_ID=tokenpool        # 平台 ID
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AI 配置（以 TokenPool 中转站为例）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI_API_KEY=sk-your-key-here
+AI_URL=https://api.tokenpool.co/v1
+AI_MODEL=gpt-4o-mini
+AI_IMAGE_MODEL=gpt-image-2
+AI_PLATFORM_ID=tokenpool
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 公众号配置（支持多个，递增编号即可）
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 WECHAT_ACCOUNT_1_NAME=公众号名称
 WECHAT_ACCOUNT_1_APPID=wxAPPID
 WECHAT_ACCOUNT_1_APPSECRET=appsecret
-# 多个公众号依次递增编号
+
+WECHAT_ACCOUNT_2_NAME=另一个公众号
+WECHAT_ACCOUNT_2_APPID=wxAPPID2
+WECHAT_ACCOUNT_2_APPSECRET=appsecret2
 ```
 
-首次启动时自动从 `.env` 生成 `config.json`。
+> 🔄 首次启动时自动从 `.env` 初始化 SQLite 数据库，**无需手动配置**。
 
-## 支持的 AI 平台
+---
 
-| 平台 | 文本 | 生图 |
-|------|------|------|
-| TokenPool 中转站 | gpt-4o / gpt-4o-mini / deepseek-chat | gpt-image-2 |
-| 阿里云百炼 | qwen-plus / qwen-max | wanx2.1-t2i-turbo |
-| OpenAI | gpt-4o | dall-e-3 |
-| 其他 16 个平台 | 各平台模型 | 需平台支持 |
+## 🛡️ 微信兼容性处理（全自动）
 
-## 项目结构
+> ⚡ 这个工具最核心的价值之一 - 帮你搞定微信公众号渲染引擎的所有坑：
+
+| 🕳️ 微信的坑 | ✅ SuperSu 的解法 |
+|:-----------:|-----------------|
+| 吃掉所有 CSS 类和 `<style>` 标签 | 全部转成**内联样式** |
+| 中英文混排挤在一起 | **自动补间距**，告别拥挤感 |
+| 标点被错误包进加粗标记 | **智能识别**，防止 `**text，**` 反人类格式 |
+| `<ul>/<ol>` 列表点消失 | 用 **Flexbox 重写**，确保渲染正常 |
+| 外部链接被微信屏蔽 | **自动转脚注**，不被屏蔽 |
+
+> 😓 **这些细节，手动做一次就知道有多烦了。**
+
+---
+
+## 🏗️ 技术架构
 
 ```
 WechatCA/
-├── app.py               # Flask Web 应用
-├── ai_enhancer.py       # AI 增强、封面生成、摘要
-├── config_manager.py    # 配置管理（多账号 CRUD）
-├── formatter.py         # 排版引擎封装
-├── publisher.py         # 微信推送（token / 图片上传 / 草稿箱）
-├── templates/
-│   └── index.html       # 前端 UI
-├── xiaohu-wechat-format/  # 排版引擎（需单独克隆）
-├── .env.example         # 环境变量模板
-└── requirements.txt
+├── 📄 app.py                    Flask 主应用（入口 + API 路由）
+├── 🤖 ai_enhancer.py            AI 增强、封面生成、摘要生成
+├── ⚙️ config_manager.py         配置管理（.env → SQLite 初始化）
+├── 💾 database.py               SQLite 存储层（账号/AI配置/设置）
+├── 🎨 formatter.py              排版引擎封装（33 个主题）
+├── 🚀 publisher.py              微信推送（token管理/封面上传/草稿箱）
+├── ⏱️ tasks.py                  异步任务系统（封面/推送后台执行）
+├── 📁 templates/
+│   └── 📄 index.html            前端 UI（编辑器 + 预览 + 推送弹窗）
+├── 📁 static/js/
+│   ├── 📄 app.js                主交互逻辑
+│   ├── 📄 api.js                API 请求封装
+│   ├── 📄 publish.js            推送弹窗逻辑
+│   └── 📄 settings.js           设置页面
+├── 📁 xiaohu-wechat-format/     排版引擎核心（上游依赖）
+├── 📁 tests/                    单元测试 + E2E 测试
+├── 📄 .env.example              环境变量模板
+└── 📄 requirements.txt
 ```
 
-## 注意
+---
 
-- 微信推送需将服务器 IP 加入公众号后台 IP 白名单
-- `config.json` 和 `.env` 含敏感信息，已在 `.gitignore` 中排除
-- 首次启动确保 `.env` 已正确配置
+## 💎 为什么值得用？
+
+<div align="center">
+
+| 理由 | 说明 |
+|------|------|
+| 🔒 **本地运行，零隐私风险** | 你的 API Key 和公众号密钥都在本机 SQLite，不上传任何服务器 |
+| ⚡ **一次配置，永久使用** | 不需要每次登录第三方平台，不需要浏览器插件 |
+| 🎯 **全链路一站式** | 从任意文本到推送草稿箱，不用切换任何工具 |
+| 🆓 **开源免费** | MIT 协议，可以自己审计代码，想改就改 |
+| 🌐 **不挑 AI 平台** | 18 个平台 + 中转站都支持，用你自己的 key |
+
+</div>
+
+---
+
+## ⚠️ 注意事项
+
+- 🔐 微信推送需将服务器 IP 加入公众号后台 IP 白名单（本地开发通常是 `127.0.0.1`）
+- 🗂️ `.env` 和 `data.db` 含敏感信息，已在 `.gitignore` 中排除
+- 🖼️ 封面图生成需要 AI 平台支持文生图功能
+
+---
+
+<p align="center">
+  <strong>🧑‍💻 技术本来就应该为懒人服务。</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/sulcr1983/WechatCA">⭐ Star this repo</a> · <a href="https://github.com/sulcr1983/WechatCA/issues">🐛 Report Issues</a>
+</p>
+
+<p align="center">
+  <sub>排版引擎基于 <a href="https://github.com/xiaohuailabs/xiaohu-wechat-format">小互AI - xiaohu-wechat-format</a>，感谢原作者的开源工作 ❤️</sub>
+</p>
